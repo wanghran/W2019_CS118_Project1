@@ -1,16 +1,16 @@
 CXX=g++
 CXXOPTIMIZE= -O2
 CXXFLAGS= -g -Wall -pthread -std=c++11 $(CXXOPTIMIZE)
-USERID=123456789
+USERID=505029637
 CLASSES=
 
 all: server client
 
-server: $(CLASSES)
-	$(CXX) -o $@ $^ $(CXXFLAGS) $@.cpp
+server: server.cpp  # $(CLASSES)
+	$(CXX) -o $@ $(CXXFLAGS) $@.cpp
 
-client: $(CLASSES)
-	$(CXX) -o $@ $^ $(CXXFLAGS) $@.cpp
+client: client.cpp # $(CLASSES)
+	$(CXX) -o $@ $(CXXFLAGS) $@.cpp
 
 clean:
 	rm -rf *.o *~ *.gch *.swp *.dSYM server client *.tar.gz
