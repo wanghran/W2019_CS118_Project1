@@ -10,13 +10,30 @@
 #include <iostream>
 #include <sstream>
 
-int main()
+int main(int argc, char *argv[])
 {
+  if (sizeof(argv) != 3) 
+  {
+    fprintf(stderr, "either port number or file directory is not given.\n");
+    exit(7);
+  }
+  int portNum = atoi(argv[1]);
+  char* fileDir = argv[2];
+  if (portNum <= 1024)
+  {
+    fprintf(stderr, "invalid port number.\n");
+    exit(7);
+  }
   // create a socket using TCP IP
-  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-  // allow others to reuse the address
-  int yes = 1;
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd == -1)
+  {
+    perror("error while creating sock");
+    return 1;
+  }
+    // allow others to reuse the address
+    int yes = 1;
   if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
   {
     perror("setsockopt");
@@ -26,7 +43,7 @@ int main()
   // bind address to socket
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(40000); // short, network byte order
+  addr.sin_port = htons(portNum); // short, network byte order
   addr.sin_addr.s_addr = inet_addr("127.0.0.1");
   memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
 
