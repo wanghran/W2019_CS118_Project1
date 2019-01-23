@@ -129,8 +129,10 @@ int main(int argc, char *argv[])
           }
 
           if (ss.str() == "close\n")
+          {
             logfile.close();
             break;
+          }
 
           ss.str("");
         }
