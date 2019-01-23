@@ -6,37 +6,46 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-
+#include <fcntl.h>
+#include <signal.h>
 #include <iostream>
 #include <sstream>
+
+void SIGTERM_handler(int sig);
 
 int main(int argc, char *argv[])
 {
   if (sizeof(argv) != 3) 
   {
     fprintf(stderr, "either port number or file directory is not given.\n");
-    exit(7);
+    return 7;
   }
   int portNum = atoi(argv[1]);
   char* fileDir = argv[2];
   if (portNum <= 1024)
   {
     fprintf(stderr, "invalid port number.\n");
-    exit(7);
+    return 7;
   }
   // create a socket using TCP IP
 
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd == -1)
   {
-    perror("error while creating sock");
+    fprintf(stderr, "error when creating a socket with error number: %d, %s\n", errno, strerror(errno));
     return 1;
   }
-    // allow others to reuse the address
-    int yes = 1;
+  // allow others to reuse the address
+  int yes = 1;
   if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
   {
-    perror("setsockopt");
+    fprintf(stderr, "error when seeting socket operation with error number: %d, %s\n", errno, strerror(errno));
+    return 1;
+  }
+
+  if (fcntl(sockfd, F_SETFD, O_NONBLOCK) == -1)
+  {
+    fprintf(stderr, "error when setting socket to non-blocking mode with error number: %d, %s\n", errno, strerror(errno));
     return 1;
   }
 
@@ -49,14 +58,14 @@ int main(int argc, char *argv[])
 
   if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
   {
-    perror("bind");
+    fprintf(stderr, "error when binding socket with error number: %d, %s\n", errno, strerror(errno));
     return 2;
   }
 
   // set socket to listen status
   if (listen(sockfd, 1) == -1)
   {
-    perror("listen");
+    fprintf(stderr, "error when listen to the socket with error number: %d, %s\n", errno, strerror(errno));
     return 3;
   }
 
@@ -108,4 +117,10 @@ int main(int argc, char *argv[])
   close(clientSockfd);
 
   return 0;
+}
+
+void SIGTERM_handler(int sig)
+{
+  fprintf(stdout, "get sigterm, gracefully exit\n");
+  exit(0);
 }
