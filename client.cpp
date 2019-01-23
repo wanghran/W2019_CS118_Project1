@@ -10,6 +10,8 @@
 #include <iostream>
 #include <sstream>
 
+const int buffsize = 1024;
+
 int main()
 {
   // create a socket using TCP IP
@@ -27,7 +29,7 @@ int main()
 
   struct sockaddr_in serverAddr;
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(40000); // short, network byte order
+  serverAddr.sin_port = htons(5000); // short, network byte order
   serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
   memset(serverAddr.sin_zero, '\0', sizeof(serverAddr.sin_zero));
 
@@ -53,7 +55,7 @@ int main()
   // send/receive data to/from connection
   bool isEnd = false;
   std::string input;
-  char buf[20] = {0};
+  char buf[buffsize] = {0};
   std::stringstream ss;
 
   while (!isEnd)
@@ -68,7 +70,7 @@ int main()
       return 4;
     }
 
-    if (recv(sockfd, buf, 20, 0) == -1)
+    if (recv(sockfd, buf, buffsize, 0) == -1)
     {
       perror("recv");
       return 5;

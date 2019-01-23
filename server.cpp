@@ -10,18 +10,22 @@
 #include <signal.h>
 #include <iostream>
 #include <sstream>
+#include <sys/select.h>
+#include <fstream>
+
+const int buffsize = 20;
 
 void SIGTERM_handler(int sig);
 
 int main(int argc, char *argv[])
 {
-  if (sizeof(argv) != 3) 
+  if (argc != 3) 
   {
     fprintf(stderr, "either port number or file directory is not given.\n");
     return 7;
   }
   int portNum = atoi(argv[1]);
-  char* fileDir = argv[2];
+  std::string fileDir = argv[2];
   if (portNum <= 1024)
   {
     fprintf(stderr, "invalid port number.\n");
@@ -69,55 +73,129 @@ int main(int argc, char *argv[])
     return 3;
   }
 
-  // accept a new connection
-  struct sockaddr_in clientAddr;
-  socklen_t clientAddrSize = sizeof(clientAddr);
-  int clientSockfd = accept(sockfd, (struct sockaddr *)&clientAddr, &clientAddrSize);
-
-  if (clientSockfd == -1)
+  while(1)
   {
-    perror("accept");
-    return 4;
-  }
-
-  char ipstr[INET_ADDRSTRLEN] = {'\0'};
-  inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
-  std::cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << std::endl;
-
-  // read/write data from/into the connection
-  bool isEnd = false;
-  char buf[20] = {0};
-  std::stringstream ss;
-
-  while (!isEnd)
-  {
-    memset(buf, '\0', sizeof(buf));
-
-    if (recv(clientSockfd, buf, 20, 0) == -1)
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(sockfd, &readfds);
+    if (select(sockfd+1, &readfds, NULL, NULL, NULL) > 0) 
     {
-      perror("recv");
-      return 5;
+      if (FD_ISSET(sockfd, &readfds))
+      {
+        struct sockaddr_in clientAddr;
+        socklen_t clientAddrSize = sizeof(clientAddr);
+        int clientSockfd = accept(sockfd, (struct sockaddr *)&clientAddr, &clientAddrSize);
+        if (clientSockfd == -1)
+        {
+          perror("accept");
+          return 4;
+        }
+        char ipstr[INET_ADDRSTRLEN] = {'\0'};
+        inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
+        std::cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << std::endl;
+
+        // read/write data from/into the connection
+        bool isEnd = false;
+        char buf[buffsize];
+        memset(buf, '\0', buffsize);
+        std::stringstream ss;
+
+        std::ofstream logfile;
+        logfile.open(fileDir.append("/1.txt"), std::ios::trunc | std::ios::out);
+        if (!logfile.is_open()) {
+          fprintf(stderr, "error open logfile\n");
+          return -1;
+        }
+
+        while (!isEnd)
+        {
+          memset(buf, '\0', buffsize);
+
+          if (recv(clientSockfd, buf, buffsize, 0) == -1)
+          {
+            perror("recv");
+            return 5;
+          }
+
+          ss << buf << std::endl;
+          // std::cout << buf << std::endl;
+
+          logfile << buf << std::endl;
+
+          if (send(clientSockfd, buf, buffsize, 0) == -1)
+          {
+            perror("send");
+            return 6;
+          }
+
+          if (ss.str() == "close\n")
+            logfile.close();
+            break;
+
+          ss.str("");
+        }
+        close(clientSockfd);
+        
+        return 0;
+      }
     }
-
-    ss << buf << std::endl;
-    std::cout << buf << std::endl;
-
-    if (send(clientSockfd, buf, 20, 0) == -1)
+    else
     {
-      perror("send");
-      return 6;
+      fprintf(stderr, "error doing select with error number: %d, %s", errno, strerror(errno));
+      return 8;
     }
-
-    if (ss.str() == "close\n")
-      break;
-
-    ss.str("");
   }
-
-  close(clientSockfd);
-
-  return 0;
 }
+
+//   // accept a new connection
+//   struct sockaddr_in clientAddr;
+//   socklen_t clientAddrSize = sizeof(clientAddr);
+//   int clientSockfd = accept(sockfd, (struct sockaddr *)&clientAddr, &clientAddrSize);
+
+//   if (clientSockfd == -1)
+//   {
+//     perror("accept");
+//     return 4;
+//   }
+
+//   char ipstr[INET_ADDRSTRLEN] = {'\0'};
+//   inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
+//   std::cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << std::endl;
+
+//   // read/write data from/into the connection
+//   bool isEnd = false;
+//   char buf[20] = {0};
+//   std::stringstream ss;
+
+//   while (!isEnd)
+//   {
+//     memset(buf, '\0', sizeof(buf));
+
+//     if (recv(clientSockfd, buf, 20, 0) == -1)
+//     {
+//       perror("recv");
+//       return 5;
+//     }
+
+//     ss << buf << std::endl;
+//     std::cout << buf << std::endl;
+
+//     if (send(clientSockfd, buf, 20, 0) == -1)
+//     {
+//       perror("send");
+//       return 6;
+//     }
+
+//     if (ss.str() == "close\n")
+//       break;
+
+//     ss.str("");
+//   }
+
+//   close(clientSockfd);
+
+//   return 0;
+// }
 
 void SIGTERM_handler(int sig)
 {
