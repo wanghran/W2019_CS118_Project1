@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
   {
     hostIP = argv[1];
   }
-  
+
   int portNum = atoi(argv[2]);
   // FILE *input_file = fopen(argv[3], "r");
   if (portNum <= 1024)
@@ -53,11 +53,16 @@ int main(int argc, char *argv[])
   }
   else
   {
-    if ((serverAddr.sin_addr.s_addr = inet_addr(hostIP)) < 0)
+    if (inet_addr(hostIP) == INADDR_NONE)
     {
       fprintf(stderr, "invalid ip address\n");
       exit(ERROR_CODE);
     }
+    else
+    {
+      serverAddr.sin_addr.s_addr = inet_addr(hostIP);
+    }
+    
   }
   memset(serverAddr.sin_zero, '\0', sizeof(serverAddr.sin_zero));
 
