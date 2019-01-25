@@ -6,38 +6,66 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <netdb.h>
 
 #include <iostream>
 #include <sstream>
 
+#define ERROR_CODE -1
+
 const int buffsize = 1024;
 
-int main()
+int main(int argc, char *argv[])
 {
+  if (argc != 4)
+  {
+    fprintf(stderr, "either server address or port number or file is not given.\n");
+    exit(ERROR_CODE);
+  }
+  char *hostname = NULL;
+  char *hostIP = NULL;
+  if (strcmp(argv[1], "localhost") == 0)
+  {
+    hostname = "localhost";
+  }
+  else
+  {
+    hostIP = argv[1];
+  }
+  
+  int portNum = atoi(argv[2]);
+  // FILE *input_file = fopen(argv[3], "r");
+  if (portNum <= 1024)
+  {
+    fprintf(stderr, "invalid port number.\n");
+    exit(ERROR_CODE);
+  }
   // create a socket using TCP IP
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
-  // struct sockaddr_in addr;
-  // addr.sin_family = AF_INET;
-  // addr.sin_port = htons(40001);     // short, network byte order
-  // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  // memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
-  // if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-  //   perror("bind");
-  //   return 1;
-  // }
-
   struct sockaddr_in serverAddr;
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(5000); // short, network byte order
-  serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  serverAddr.sin_port = htons(portNum); // short, network byte order
+  if (hostname){
+    struct hostent *server;
+    server = gethostbyname(hostname);
+    memcpy(&serverAddr.sin_addr.s_addr, server->h_addr, server->h_length);
+  }
+  else
+  {
+    if ((serverAddr.sin_addr.s_addr = inet_addr(hostIP)) < 0)
+    {
+      fprintf(stderr, "invalid ip address\n");
+      exit(ERROR_CODE);
+    }
+  }
   memset(serverAddr.sin_zero, '\0', sizeof(serverAddr.sin_zero));
 
   // connect to the server
   if (connect(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1)
   {
     perror("connect");
-    return 2;
+    exit(ERROR_CODE);
   }
 
   struct sockaddr_in clientAddr;
@@ -45,7 +73,7 @@ int main()
   if (getsockname(sockfd, (struct sockaddr *)&clientAddr, &clientAddrLen) == -1)
   {
     perror("getsockname");
-    return 3;
+    exit(ERROR_CODE);
   }
 
   char ipstr[INET_ADDRSTRLEN] = {'\0'};
