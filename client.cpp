@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 
 #define ERROR_CODE -1
 
@@ -34,7 +35,9 @@ int main(int argc, char *argv[])
   }
 
   int portNum = atoi(argv[2]);
-  // FILE *input_file = fopen(argv[3], "r");
+
+  // FILE *input_file = fopen(argv[3], "r+");
+
   if (portNum <= 1024)
   {
     fprintf(stderr, "invalid port number.\n");
@@ -86,39 +89,75 @@ int main(int argc, char *argv[])
   std::cout << "Set up a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << std::endl;
 
   // send/receive data to/from connection
-  bool isEnd = false;
-  std::string input;
+  // bool isEnd = false;
+  // std::string input;
   char buf[buffsize] = {0};
-  std::stringstream ss;
+  // std::stringstream ss;
 
-  while (!isEnd)
+  std::string dir("./");
+  dir.append(argv[3]);
+  std::ifstream ifs;
+
+  try
   {
-    memset(buf, '\0', sizeof(buf));
-
-    std::cout << "send: ";
-    std::cin >> input;
-    if (send(sockfd, input.c_str(), input.size(), 0) == -1)
-    {
-      perror("send");
-      return 4;
-    }
-
-    if (recv(sockfd, buf, buffsize, 0) == -1)
-    {
-      perror("recv");
-      return 5;
-    }
-    ss << buf << std::endl;
-    std::cout << "echo: ";
-    std::cout << buf << std::endl;
-
-    if (ss.str() == "close\n")
-      break;
-
-    ss.str("");
+    ifs.open(dir, std::ios::in);
+  }
+  catch(const std::exception& e)
+  {
+    std::cerr << e.what() << '\n';
+    exit(ERROR_CODE);
   }
 
-  close(sockfd);
+  while(ifs.good())
+  {
+    int byte_transfer = ifs.read(buf, sizeof(buf)).gcount();
+    if (send(sockfd, buf, byte_transfer, 0) == -1)
+    {
+      perror("send");
+      exit(ERROR_CODE);
+    }
+    memset(buf, '\0', sizeof(buf));
+  }
+  if (ifs.eof())
+  {
+    std::cout << "done!" << std::endl;
+    ifs.close();
+    close(sockfd);
+    return 0;
+  }
+  else
+  {
+    std::cerr << "error when reading local files" << std::endl;
+    exit(ERROR_CODE);
+  }
+  
+  // while (!isEnd)
+  // {
+  //   memset(buf, '\0', sizeof(buf));
 
-  return 0;
+  //   std::cout << "send: ";
+  //   std::cin >> input;
+  //   if (send(sockfd, input.c_str(), input.size(), 0) == -1)
+  //   {
+  //     perror("send");
+  //     return 4;
+  //   }
+
+  //   if (recv(sockfd, buf, buffsize, 0) == -1)
+  //   {
+  //     perror("recv");
+  //     return 5;
+  //   }
+  //   ss << buf << std::endl;
+  //   std::cout << "echo: ";
+  //   std::cout << buf << std::endl;
+
+  //   if (ss.str() == "close\n")
+  //     break;
+
+  //   ss.str("");
+  // }
+
+  // close(sockfd);
+  // return 0;
 }

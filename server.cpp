@@ -97,10 +97,11 @@ int main(int argc, char *argv[])
         std::cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << std::endl;
 
         // read/write data from/into the connection
-        bool isEnd = false;
+        // bool isEnd = false;
         char buf[buffsize];
         memset(buf, '\0', buffsize);
-        std::stringstream ss;
+        int receive;
+        // std::stringstream ss;
 
         std::ofstream logfile;
         logfile.open(fileDir.append("/1.txt"), std::ios::trunc | std::ios::out);
@@ -109,35 +110,57 @@ int main(int argc, char *argv[])
           exit(ERROR_CODE);
         }
 
-        while (!isEnd)
+        while(1)
         {
-          memset(buf, '\0', buffsize);
+          memset(buf, '\0', sizeof(buf));
 
-          if (recv(clientSockfd, buf, buffsize, 0) == -1)
+          receive = recv(clientSockfd, buf, buffsize, 0);
+          if (receive == -1)
           {
             perror("recv");
             exit(ERROR_CODE);
           }
-
-          ss << buf << std::endl;
-          // std::cout << buf << std::endl;
-
-          logfile << buf << std::endl;
-
-          if (send(clientSockfd, buf, buffsize, 0) == -1)
+          if (receive == 0)
           {
-            perror("send");
-            exit(ERROR_CODE);
-          }
-
-          if (ss.str() == "close\n")
-          {
+            std::cout << "file done!" << std::endl;
             logfile.close();
             break;
           }
 
-          ss.str("");
+          logfile << buf;
+
+
         }
+
+        // while (!isEnd)
+        // {
+        //   memset(buf, '\0', buffsize);
+
+        //   if (recv(clientSockfd, buf, buffsize, 0) == -1)
+        //   {
+        //     perror("recv");
+        //     exit(ERROR_CODE);
+        //   }
+
+        //   ss << buf << std::endl;
+        //   // std::cout << buf << std::endl;
+
+        //   logfile << buf << std::endl;
+
+        //   if (send(clientSockfd, buf, buffsize, 0) == -1)
+        //   {
+        //     perror("send");
+        //     exit(ERROR_CODE);
+        //   }
+
+        //   if (ss.str() == "close\n")
+        //   {
+        //     logfile.close();
+        //     break;
+        //   }
+
+        //   ss.str("");
+        // }
         close(clientSockfd);
         
         return 0;
