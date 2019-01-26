@@ -13,6 +13,8 @@
 #include <sys/select.h>
 #include <fstream>
 
+#define ERROR_CODE -1
+
 const int buffsize = 20;
 
 void SIGTERM_handler(int sig);
@@ -22,14 +24,14 @@ int main(int argc, char *argv[])
   if (argc != 3) 
   {
     fprintf(stderr, "either port number or file directory is not given.\n");
-    return 7;
+    exit(ERROR_CODE);
   }
   int portNum = atoi(argv[1]);
   std::string fileDir = argv[2];
   if (portNum <= 1024)
   {
     fprintf(stderr, "invalid port number.\n");
-    return 7;
+    exit(ERROR_CODE);
   }
   // create a socket using TCP IP
 
@@ -37,20 +39,20 @@ int main(int argc, char *argv[])
   if (sockfd == -1)
   {
     fprintf(stderr, "error when creating a socket with error number: %d, %s\n", errno, strerror(errno));
-    return 1;
+    exit(ERROR_CODE);
   }
   // allow others to reuse the address
   int yes = 1;
   if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
   {
     fprintf(stderr, "error when seeting socket operation with error number: %d, %s\n", errno, strerror(errno));
-    return 1;
+    exit(ERROR_CODE);
   }
 
   if (fcntl(sockfd, F_SETFD, O_NONBLOCK) == -1)
   {
     fprintf(stderr, "error when setting socket to non-blocking mode with error number: %d, %s\n", errno, strerror(errno));
-    return 1;
+    exit(ERROR_CODE);
   }
 
   // bind address to socket
@@ -63,14 +65,14 @@ int main(int argc, char *argv[])
   if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
   {
     fprintf(stderr, "error when binding socket with error number: %d, %s\n", errno, strerror(errno));
-    return 2;
+    exit(ERROR_CODE);
   }
 
   // set socket to listen status
   if (listen(sockfd, 1) == -1)
   {
     fprintf(stderr, "error when listen to the socket with error number: %d, %s\n", errno, strerror(errno));
-    return 3;
+    exit(ERROR_CODE);
   }
 
   while(1)
@@ -88,7 +90,7 @@ int main(int argc, char *argv[])
         if (clientSockfd == -1)
         {
           perror("accept");
-          return 4;
+          exit(ERROR_CODE);
         }
         char ipstr[INET_ADDRSTRLEN] = {'\0'};
         inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
@@ -104,7 +106,7 @@ int main(int argc, char *argv[])
         logfile.open(fileDir.append("/1.txt"), std::ios::trunc | std::ios::out);
         if (!logfile.is_open()) {
           fprintf(stderr, "error open logfile\n");
-          return -1;
+          exit(ERROR_CODE);
         }
 
         while (!isEnd)
@@ -114,7 +116,7 @@ int main(int argc, char *argv[])
           if (recv(clientSockfd, buf, buffsize, 0) == -1)
           {
             perror("recv");
-            return 5;
+            exit(ERROR_CODE);
           }
 
           ss << buf << std::endl;
@@ -125,7 +127,7 @@ int main(int argc, char *argv[])
           if (send(clientSockfd, buf, buffsize, 0) == -1)
           {
             perror("send");
-            return 6;
+            exit(ERROR_CODE);
           }
 
           if (ss.str() == "close\n")
@@ -144,60 +146,10 @@ int main(int argc, char *argv[])
     else
     {
       fprintf(stderr, "error doing select with error number: %d, %s", errno, strerror(errno));
-      return 8;
+      exit(ERROR_CODE);
     }
   }
 }
-
-//   // accept a new connection
-//   struct sockaddr_in clientAddr;
-//   socklen_t clientAddrSize = sizeof(clientAddr);
-//   int clientSockfd = accept(sockfd, (struct sockaddr *)&clientAddr, &clientAddrSize);
-
-//   if (clientSockfd == -1)
-//   {
-//     perror("accept");
-//     return 4;
-//   }
-
-//   char ipstr[INET_ADDRSTRLEN] = {'\0'};
-//   inet_ntop(clientAddr.sin_family, &clientAddr.sin_addr, ipstr, sizeof(ipstr));
-//   std::cout << "Accept a connection from: " << ipstr << ":" << ntohs(clientAddr.sin_port) << std::endl;
-
-//   // read/write data from/into the connection
-//   bool isEnd = false;
-//   char buf[20] = {0};
-//   std::stringstream ss;
-
-//   while (!isEnd)
-//   {
-//     memset(buf, '\0', sizeof(buf));
-
-//     if (recv(clientSockfd, buf, 20, 0) == -1)
-//     {
-//       perror("recv");
-//       return 5;
-//     }
-
-//     ss << buf << std::endl;
-//     std::cout << buf << std::endl;
-
-//     if (send(clientSockfd, buf, 20, 0) == -1)
-//     {
-//       perror("send");
-//       return 6;
-//     }
-
-//     if (ss.str() == "close\n")
-//       break;
-
-//     ss.str("");
-//   }
-
-//   close(clientSockfd);
-
-//   return 0;
-// }
 
 void SIGTERM_handler(int sig)
 {
