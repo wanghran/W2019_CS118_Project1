@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 {
   if (argc != 4)
   {
-    fprintf(stderr, "either server address or port number or file is not given.\n");
+    fprintf(stderr, "ERROR: either server address or port number or file is not given.\n");
     exit(ERROR_CODE);
   }
   char *hostname = NULL;
@@ -38,13 +38,15 @@ int main(int argc, char *argv[])
 
   // FILE *input_file = fopen(argv[3], "r+");
 
-  if (portNum <= 1024)
+  if (portNum < 1024 || portNum > 65535)
   {
-    fprintf(stderr, "invalid port number.\n");
+    fprintf(stderr, "ERROR: invalid port number.\n");
     exit(ERROR_CODE);
   }
   // create a socket using TCP IP
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+  
 
   struct sockaddr_in serverAddr;
   serverAddr.sin_family = AF_INET;
@@ -58,7 +60,7 @@ int main(int argc, char *argv[])
   {
     if (inet_addr(hostIP) == INADDR_NONE)
     {
-      fprintf(stderr, "invalid ip address\n");
+      fprintf(stderr, "ERROR: invalid ip address\n");
       exit(ERROR_CODE);
     }
     else
